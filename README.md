@@ -1,4 +1,4 @@
-# flagship - A package for retrieving feature flags from a dynamo document
+# flagship - Easily use feature-flags to ship code, with DynamoDB.
 
 [![GoDoc](http://godoc.org/github.com/yosssi/gohtml?status.png)](http://godoc.org/github.com/joerdav/flagship)
 
