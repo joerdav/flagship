@@ -18,7 +18,6 @@ package flagship
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -27,9 +26,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/joerdav/flagship/internal/dynamostore"
+	"github.com/joerdav/flagship/internal/models"
 )
 
 // BoolFeatureStore defines the interface for accessing boolean typed feature flags from some source.
@@ -114,10 +113,10 @@ func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 		}
 		cfg.Client = dynamodb.NewFromConfig(c)
 	}
-	ds := dynamoStore{
-		client:    cfg.Client,
-		tableName: cfg.TableName,
-		record:    cfg.RecordName,
+	ds := dynamostore.DynamoStore{
+		Client:    cfg.Client,
+		TableName: cfg.TableName,
+		Record:    cfg.RecordName,
 	}
 	s := featureStore{
 		cacheTTL: cfg.CacheTTL,
@@ -132,14 +131,8 @@ func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 	return &s, nil
 }
 
-type ThrottleConfig struct {
-	// Whitelist is a list of hash results that will always be allowed through the throttle.
-	Whitelist []uint `json:"whitelist,omitempty"`
-	// Probability of a hash result making it through the throttle.
-	Probability float64 `json:"probability,omitempty"`
-}
 type throttleConfigInt struct {
-	ThrottleConfig
+	models.ThrottleConfig
 	// Threshold is an integer representation of Probability. Floor(Probability*100)
 	Threshold uint
 }
@@ -149,7 +142,7 @@ type featureStore struct {
 	cacheTTL        time.Duration
 	expiry          time.Time
 	now             func() time.Time
-	cachedFeatures  features
+	cachedFeatures  models.Features
 	cachedThrottles map[string]*throttleConfigInt
 	store           store
 }
@@ -178,11 +171,14 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 	return h <= t.Threshold
 
 }
-func (s *featureStore) GetHash(ctx context.Context, key string, hashKey io.Reader) uint {
+func GetHash(ctx context.Context, key string, hashKey io.Reader) uint {
 	f := fnv.New32a()
 	f.Write([]byte(key))
 	_, _ = io.Copy(f, hashKey)
 	return uint(f.Sum32()) % 100_00
+}
+func (s *featureStore) GetHash(ctx context.Context, key string, hashKey io.Reader) uint {
+	return GetHash(ctx, key, hashKey)
 }
 
 func (s *featureStore) Bool(ctx context.Context, key string) bool {
@@ -193,7 +189,7 @@ func (s *featureStore) Bool(ctx context.Context, key string) bool {
 	return f.Bool(key)
 }
 
-func (s *featureStore) fetch(ctx context.Context) (features, map[string]*throttleConfigInt, error) {
+func (s *featureStore) fetch(ctx context.Context) (models.Features, map[string]*throttleConfigInt, error) {
 	s.fetchMutex.Lock()
 	defer s.fetchMutex.Unlock()
 	if s.now().Before(s.expiry) {
@@ -215,49 +211,6 @@ func (s *featureStore) fetch(ctx context.Context) (features, map[string]*throttl
 	return s.cachedFeatures, s.cachedThrottles, nil
 }
 
-type features map[string]interface{}
-
-func (f features) Bool(s string) bool {
-	b, ok := f[s].(bool)
-	return b && ok
-}
-
 type store interface {
-	Load(context.Context) (features, map[string]ThrottleConfig, error)
-}
-
-type dynamoStore struct {
-	client            *dynamodb.Client
-	tableName, record string
-}
-
-func (s *dynamoStore) Load(ctx context.Context) (features, map[string]ThrottleConfig, error) {
-	gio, err := s.client.GetItem(ctx, &dynamodb.GetItemInput{
-		TableName: &s.tableName,
-		Key: map[string]types.AttributeValue{
-			"_pk": &types.AttributeValueMemberS{Value: s.record},
-		},
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(gio.Item) < 1 {
-		return nil, nil, errors.New("record is empty")
-	}
-	var f struct {
-		Features  features                  `json:"features"`
-		Throttles map[string]ThrottleConfig `json:"throttles"`
-	}
-	err = unmarshalMap(gio.Item, &f)
-	if err != nil {
-		return nil, nil, err
-	}
-	if f.Throttles == nil {
-		f.Throttles = make(map[string]ThrottleConfig)
-	}
-	return f.Features, f.Throttles, nil
-}
-
-func unmarshalMap(m map[string]types.AttributeValue, out interface{}) error {
-	return attributevalue.NewDecoder(func(do *attributevalue.DecoderOptions) { do.TagKey = "json" }).Decode(&types.AttributeValueMemberM{Value: m}, out)
+	Load(context.Context) (models.Features, map[string]models.ThrottleConfig, error)
 }
