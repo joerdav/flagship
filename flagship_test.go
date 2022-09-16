@@ -3,6 +3,7 @@ package flagship_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -270,6 +271,95 @@ func TestBool(t *testing.T) {
 			b := store.Bool(context.Background(), "someflag")
 			if b != tt.expectedBool {
 				t.Errorf("expected flag to be %v, was %v", tt.expectedBool, b)
+			}
+		})
+	}
+}
+
+func TestAllBools(t *testing.T) {
+	testClient, testRegion, err := newTestClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tableName := createLocalTable(t, testClient)
+	t.Cleanup(func() {
+		deleteLocalTable(t, testClient, tableName)
+	})
+	tests := []struct {
+		name          string
+		flags         types.AttributeValue
+		expectedBools map[string]bool
+	}{
+		{
+			name:          "given no flags, return empty map",
+			flags:         &types.AttributeValueMemberM{Value: make(map[string]types.AttributeValue)},
+			expectedBools: make(map[string]bool),
+		},
+		{
+			name: "given mixed type flags, return map with booleans",
+			flags: &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"someflagFalse":  &types.AttributeValueMemberBOOL{Value: false},
+					"someflagTrue":   &types.AttributeValueMemberBOOL{Value: true},
+					"someflagString": &types.AttributeValueMemberS{Value: "2022-09-15T10:41:17.159857636Z"},
+				},
+			},
+			expectedBools: map[string]bool{
+				"someflagFalse": false,
+				"someflagTrue":  true,
+			},
+		},
+		{
+			name: "given string type flags, return empty map",
+			flags: &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"someflagString": &types.AttributeValueMemberS{Value: "2022-09-15T10:41:17.159857636Z"},
+				},
+			},
+			expectedBools: make(map[string]bool),
+		},
+		{
+			name: "given bool type flags, return map with all booleans",
+			flags: &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"someflagFalse": &types.AttributeValueMemberBOOL{Value: false},
+					"someflagTrue":  &types.AttributeValueMemberBOOL{Value: true},
+				},
+			},
+			expectedBools: map[string]bool{
+				"someflagFalse": false,
+				"someflagTrue":  true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			record := uuid.New().String()
+			_, err := testClient.PutItem(context.Background(), &dynamodb.PutItemInput{
+				Item: map[string]types.AttributeValue{
+					"_pk":      &types.AttributeValueMemberS{Value: record},
+					"features": tt.flags,
+				},
+				TableName: &tableName,
+			})
+			if err != nil {
+				t.Errorf("unexpected error got %v", err)
+			}
+			store, err := flagship.New(
+				context.Background(),
+				flagship.WithClient(testClient),
+				flagship.WithTableName(tableName),
+				flagship.WithRecordName(record),
+				flagship.WithRegion(testRegion),
+			)
+			if err != nil {
+				t.Errorf("unexpected error got %v", err)
+			}
+			b := store.AllBools(context.Background())
+			if !reflect.DeepEqual(b, tt.expectedBools) {
+				t.Errorf("expected flags to be %v, was %v", tt.expectedBools, b)
 			}
 		})
 	}
