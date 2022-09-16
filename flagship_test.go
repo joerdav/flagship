@@ -3,13 +3,13 @@ package flagship_test
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/joerdav/flagship"
 )
@@ -358,7 +358,7 @@ func TestAllBools(t *testing.T) {
 				t.Errorf("unexpected error got %v", err)
 			}
 			b := store.AllBools(context.Background())
-			if !reflect.DeepEqual(b, tt.expectedBools) {
+			if diff := cmp.Diff(tt.expectedBools, b); diff != "" {
 				t.Errorf("expected flags to be %v, was %v", tt.expectedBools, b)
 			}
 		})
