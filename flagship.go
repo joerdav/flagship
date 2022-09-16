@@ -3,16 +3,15 @@ A package for retreiving feature flags from a dynamo document.
 
 Retrieving a boolean flag:
 
-		s, err := flagship.New(context.Background(), flagship.WithTableName(tableName))
-		if err != nil {
-			t.Errorf("unexpected error got %v", err)
-		}
-		if s.Bool(context.Background(), "newfeature") {
-			// New Code
-		} else {
-			// Old code
-		}
-
+	s, err := flagship.New(context.Background(), flagship.WithTableName(tableName))
+	if err != nil {
+		t.Errorf("unexpected error got %v", err)
+	}
+	if s.Bool(context.Background(), "newfeature") {
+		// New Code
+	} else {
+		// Old code
+	}
 */
 package flagship
 
@@ -30,6 +29,14 @@ import (
 	"github.com/joerdav/flagship/internal/dynamostore"
 	"github.com/joerdav/flagship/internal/models"
 )
+
+type Features = models.Features
+
+// WrapFeatureStore defines the interface for accessing all feature flags from some source.
+type WrapFeatureStore interface {
+	// All returns the state containing all feature flags
+	All(ctx context.Context) models.Features
+}
 
 // BoolFeatureStore defines the interface for accessing boolean typed feature flags from some source.
 type BoolFeatureStore interface {
@@ -78,6 +85,7 @@ type ThrottleFeatureStore interface {
 
 // FeatureStore is an aggregate interface for accessing all supported types of feature flag.
 type FeatureStore interface {
+	WrapFeatureStore
 	BoolFeatureStore
 	ThrottleFeatureStore
 }
@@ -91,6 +99,7 @@ type featureStoreConfig struct {
 
 // New constructs a new instance of the feature store client.
 // Optionally accepts Option types as a variadic parameter:
+//
 //	s, err := flagship.New(context.Background(), flagship.WithClient(client))
 func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 	cfg := featureStoreConfig{
@@ -183,6 +192,14 @@ func (s *featureStore) Bool(ctx context.Context, key string) bool {
 		f = s.cachedFeatures
 	}
 	return f.Bool(key)
+}
+
+func (s *featureStore) All(ctx context.Context) models.Features {
+	f, _, err := s.fetch(ctx)
+	if err != nil {
+		f = s.cachedFeatures
+	}
+	return f
 }
 
 func (s *featureStore) fetch(ctx context.Context) (models.Features, map[string]*throttleConfigInt, error) {
