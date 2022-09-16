@@ -3,16 +3,15 @@ A package for retreiving feature flags from a dynamo document.
 
 Retrieving a boolean flag:
 
-		s, err := flagship.New(context.Background(), flagship.WithTableName(tableName))
-		if err != nil {
-			t.Errorf("unexpected error got %v", err)
-		}
-		if s.Bool(context.Background(), "newfeature") {
-			// New Code
-		} else {
-			// Old code
-		}
-
+	s, err := flagship.New(context.Background(), flagship.WithTableName(tableName))
+	if err != nil {
+		t.Errorf("unexpected error got %v", err)
+	}
+	if s.Bool(context.Background(), "newfeature") {
+		// New Code
+	} else {
+		// Old code
+	}
 */
 package flagship
 
@@ -47,6 +46,8 @@ type BoolFeatureStore interface {
 	//		// Old code
 	//	}
 	Bool(ctx context.Context, key string) bool
+	// All returns the state containing all feature flags
+	AllBools(ctx context.Context) map[string]bool
 }
 
 // ThrottleFeatureStore defines the interface for accessing a feature flag that needs bucketing.
@@ -91,6 +92,7 @@ type featureStoreConfig struct {
 
 // New constructs a new instance of the feature store client.
 // Optionally accepts Option types as a variadic parameter:
+//
 //	s, err := flagship.New(context.Background(), flagship.WithClient(client))
 func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 	cfg := featureStoreConfig{
@@ -183,6 +185,24 @@ func (s *featureStore) Bool(ctx context.Context, key string) bool {
 		f = s.cachedFeatures
 	}
 	return f.Bool(key)
+}
+
+func (s *featureStore) AllBools(ctx context.Context) (allBools map[string]bool) {
+	f, _, err := s.fetch(ctx)
+	if err != nil {
+		f = s.cachedFeatures
+	}
+
+	allBools = make(map[string]bool)
+
+	for key, value := range f {
+		boolValue, ok := value.(bool)
+		if ok {
+			allBools[key] = boolValue
+		}
+	}
+
+	return
 }
 
 func (s *featureStore) fetch(ctx context.Context) (models.Features, map[string]*throttleConfigInt, error) {

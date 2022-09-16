@@ -6,7 +6,8 @@ import (
 )
 
 // MockFeatureStore is used for testing feature flags. It conforms to both BoolFeatureStore and ThrottleFeatureStore.
-// 	m := MockFeatureStore{
+//
+//	m := MockFeatureStore{
 //		"featureA":true,
 //	}
 //	m.Bool(context.Background(), "featureA") // true
@@ -17,6 +18,10 @@ type MockFeatureStore map[string]bool
 
 func (s MockFeatureStore) Bool(_ context.Context, key string) bool {
 	return s[key]
+}
+
+func (s MockFeatureStore) AllBools(_ context.Context) map[string]bool {
+	return s
 }
 
 func (s MockFeatureStore) ThrottleAllow(_ context.Context, key string, _ io.Reader) bool {
