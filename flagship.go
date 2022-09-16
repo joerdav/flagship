@@ -30,14 +30,6 @@ import (
 	"github.com/joerdav/flagship/internal/models"
 )
 
-type Features = models.Features
-
-// WrapFeatureStore defines the interface for accessing all feature flags from some source.
-type WrapFeatureStore interface {
-	// All returns the state containing all feature flags
-	All(ctx context.Context) models.Features
-}
-
 // BoolFeatureStore defines the interface for accessing boolean typed feature flags from some source.
 type BoolFeatureStore interface {
 	// Bool returns the state of the feature flag with the key of `key`:
@@ -54,6 +46,8 @@ type BoolFeatureStore interface {
 	//		// Old code
 	//	}
 	Bool(ctx context.Context, key string) bool
+	// All returns the state containing all feature flags
+	AllBools(ctx context.Context) map[string]bool
 }
 
 // ThrottleFeatureStore defines the interface for accessing a feature flag that needs bucketing.
@@ -85,7 +79,6 @@ type ThrottleFeatureStore interface {
 
 // FeatureStore is an aggregate interface for accessing all supported types of feature flag.
 type FeatureStore interface {
-	WrapFeatureStore
 	BoolFeatureStore
 	ThrottleFeatureStore
 }
@@ -194,12 +187,22 @@ func (s *featureStore) Bool(ctx context.Context, key string) bool {
 	return f.Bool(key)
 }
 
-func (s *featureStore) All(ctx context.Context) models.Features {
+func (s *featureStore) AllBools(ctx context.Context) (allBools map[string]bool) {
 	f, _, err := s.fetch(ctx)
 	if err != nil {
 		f = s.cachedFeatures
 	}
-	return f
+
+	allBools = make(map[string]bool)
+
+	for key, value := range f {
+		boolValue, ok := value.(bool)
+		if ok {
+			allBools[key] = boolValue
+		}
+	}
+
+	return
 }
 
 func (s *featureStore) fetch(ctx context.Context) (models.Features, map[string]*throttleConfigInt, error) {

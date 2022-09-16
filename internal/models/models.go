@@ -14,10 +14,6 @@ func (f Features) Bool(s string) bool {
 	return b && ok
 }
 
-func (f Features) All() Features {
-	return f
-}
-
 type StoreDocument struct {
 	Features  Features                  `json:"features"`
 	Throttles map[string]ThrottleConfig `json:"throttles"`
