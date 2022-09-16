@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -13,6 +14,28 @@ import (
 type DynamoStore struct {
 	Client            *dynamodb.Client
 	TableName, Record string
+}
+
+func NewDynamoStore(tableName, recordName, region string) (DynamoStore, error) {
+	var dynamoOpts []func(*config.LoadOptions) error
+	dynamoOpts = append(dynamoOpts, config.WithRegion(region))
+	c, err := config.LoadDefaultConfig(context.Background(), dynamoOpts...)
+	if err != nil {
+		return DynamoStore{}, err
+	}
+	client := dynamodb.NewFromConfig(c)
+	return DynamoStore{
+		Client:    client,
+		TableName: tableName,
+		Record:    recordName,
+	}, nil
+}
+func NewDynamoStoreWithClient(tableName, recordName string, client *dynamodb.Client) DynamoStore {
+	return DynamoStore{
+		Client:    client,
+		TableName: tableName,
+		Record:    recordName,
+	}
 }
 
 func (s *DynamoStore) Load(ctx context.Context) (models.Features, map[string]models.ThrottleConfig, error) {

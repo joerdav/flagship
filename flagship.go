@@ -113,11 +113,7 @@ func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 		}
 		cfg.Client = dynamodb.NewFromConfig(c)
 	}
-	ds := dynamostore.DynamoStore{
-		Client:    cfg.Client,
-		TableName: cfg.TableName,
-		Record:    cfg.RecordName,
-	}
+	ds := dynamostore.NewDynamoStoreWithClient(cfg.TableName, cfg.RecordName, cfg.Client)
 	s := featureStore{
 		cacheTTL: cfg.CacheTTL,
 		now:      cfg.Now,
