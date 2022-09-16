@@ -359,7 +359,7 @@ func TestAllBools(t *testing.T) {
 			}
 			b := store.AllBools(context.Background())
 			if diff := cmp.Diff(tt.expectedBools, b); diff != "" {
-				t.Errorf("expected flags to be %v, was %v", tt.expectedBools, b)
+				t.Error(diff)
 			}
 		})
 	}
