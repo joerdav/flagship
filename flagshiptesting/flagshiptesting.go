@@ -3,7 +3,12 @@ package flagshiptesting
 import (
 	"context"
 	"io"
+
+	"github.com/joerdav/flagship"
 )
+
+// compile time check that MockFeatureStore implements flagship.FeatureStore.
+var _ flagship.FeatureStore = MockFeatureStore{}
 
 // MockFeatureStore is used for testing feature flags. It conforms to both BoolFeatureStore and ThrottleFeatureStore.
 //
