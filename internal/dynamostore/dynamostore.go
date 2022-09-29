@@ -3,7 +3,9 @@ package dynamostore
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -37,7 +39,29 @@ func NewDynamoStoreWithClient(tableName, recordName string, client *dynamodb.Cli
 		Record:    recordName,
 	}
 }
-
+func (s *DynamoStore) RemoveFeature(ctx context.Context, feature string) error {
+	_, err := s.Client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		Key: map[string]types.AttributeValue{
+			"_pk": &types.AttributeValueMemberS{Value: s.Record},
+		},
+		TableName:        &s.TableName,
+		UpdateExpression: aws.String(fmt.Sprintf("REMOVE features.%s", feature)),
+	})
+	return err
+}
+func (s *DynamoStore) SetFeature(ctx context.Context, feature string, value bool) error {
+	_, err := s.Client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		Key: map[string]types.AttributeValue{
+			"_pk": &types.AttributeValueMemberS{Value: s.Record},
+		},
+		TableName:        &s.TableName,
+		UpdateExpression: aws.String(fmt.Sprintf("SET features.%s = :c", feature)),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":c": &types.AttributeValueMemberBOOL{Value: value},
+		},
+	})
+	return err
+}
 func (s *DynamoStore) Load(ctx context.Context) (models.Features, map[string]models.ThrottleConfig, error) {
 	gio, err := s.Client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: &s.TableName,

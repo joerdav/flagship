@@ -5,22 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joerdav/flagship/cmd/flagship/config"
 	"github.com/joerdav/flagship/internal/dynamostore"
 )
 
 type Command struct{}
 
 func (Command) Run(args []string) error {
-	tableName := "featureFlagStore"
-	recordName := "features"
-	if len(args) > 0 {
-		tableName = args[0]
-	}
-	if len(args) > 1 {
-		recordName = args[1]
-	}
+	f := config.GlobalFlags()
+	f.Parse(args)
 	region := os.Getenv("AWS_REGION")
-	store, err := dynamostore.NewDynamoStore(tableName, recordName, region)
+	store, err := dynamostore.NewDynamoStore(f.TableName, f.RecordName, region)
 	if err != nil {
 		return fmt.Errorf("Error when creating DynamoDB connection: %s", err.Error())
 	}
@@ -55,7 +50,6 @@ func (Command) Run(args []string) error {
 }
 
 func (Command) Help() {
-	fmt.Println(`usage: flagship ls [tableName] [recordName]
-	Returns the status of all feature flags.
-	Optionally tableName and recordName can be provided. (default=featureFlagStore, features)`)
+	fmt.Println(`usage: flagship ls
+	Returns the status of all feature flags.`)
 }
