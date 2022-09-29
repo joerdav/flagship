@@ -82,10 +82,10 @@ func run() error {
 		"ls":   lscmd.Command{},
 		"hash": hashcmd.Command{},
 		"feature": newParentCommand("sub", map[string]command{
-			"get":     feature.Get{},
-			"enable":  feature.Enable{},
+			"get":     feature.Get{Store: store, Out: os.Stdout},
+			"enable":  feature.Enable{Store: store},
 			"disable": feature.Disable{Store: store},
-			"rm":      feature.Rm{},
+			"rm":      feature.Rm{Store: store},
 		}),
 	}
 	cmdl := []string{}
