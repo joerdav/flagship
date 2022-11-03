@@ -14,10 +14,13 @@ import (
 	"github.com/joerdav/flagship"
 )
 
-func setThrottle(d *dynamodb.Client, key string, value float64, whitelist []string, table, record string) error {
+func setThrottle(d *dynamodb.Client, key string, value float64, whitelist []string, table, record string, disabled *bool) error {
 	k := &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
 		"probability": &types.AttributeValueMemberN{Value: fmt.Sprint(value)},
 	}}
+	if disabled != nil {
+		k.Value["disabled"] = &types.AttributeValueMemberBOOL{Value: *disabled}
+	}
 	if len(whitelist) > 0 {
 		k.Value["whitelist"] = &types.AttributeValueMemberNS{Value: whitelist}
 	}
@@ -127,6 +130,7 @@ func TestAllowThrottle(t *testing.T) {
 		name           string
 		throttleKey    string
 		probability    float64
+		disabled       bool
 		whitelist      []uint
 		hashValue      string
 		givenKey       string
@@ -152,6 +156,24 @@ func TestAllowThrottle(t *testing.T) {
 			name:           "given throttle probability is 100 always allow",
 			throttleKey:    "someFeature",
 			probability:    100,
+			givenKey:       "someFeature",
+			hashValue:      "an input",
+			expectedResult: true,
+		},
+		{
+			name:           "given throttle probability is 100 and disabled is true always disallow",
+			throttleKey:    "someFeature",
+			probability:    100,
+			disabled:       true,
+			givenKey:       "someFeature",
+			hashValue:      "an input",
+			expectedResult: false,
+		},
+		{
+			name:           "setting disabled to false will not affect the throttle",
+			throttleKey:    "someFeature",
+			probability:    100,
+			disabled:       false,
 			givenKey:       "someFeature",
 			hashValue:      "an input",
 			expectedResult: true,
@@ -183,7 +205,7 @@ func TestAllowThrottle(t *testing.T) {
 			for _, f := range tt.whitelist {
 				wl = append(wl, fmt.Sprint(f))
 			}
-			err := setThrottle(testClient, tt.throttleKey, tt.probability, wl, tableName, record)
+			err := setThrottle(testClient, tt.throttleKey, tt.probability, wl, tableName, record, &tt.disabled)
 			if err != nil {
 				t.Errorf("unexpected error got %v", err)
 			}

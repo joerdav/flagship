@@ -5,6 +5,8 @@ type ThrottleConfig struct {
 	Whitelist []uint `json:"whitelist,omitempty"`
 	// Probability of a hash result making it through the throttle.
 	Probability float64 `json:"probability,omitempty"`
+	// When true will force a disallow for all the requests going through the throttle 
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 type Features map[string]interface{}

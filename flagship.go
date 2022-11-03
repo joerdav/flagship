@@ -160,6 +160,9 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 			return true
 		}
 	}
+	if t.Disabled {
+		return false
+	}
 	if t.Threshold == 0 {
 		return false
 	}
