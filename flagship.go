@@ -151,6 +151,9 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 		return false
 	}
 	t := ts[key]
+	if t.Disabled {
+		return false
+	}
 	h := s.GetHash(ctx, key, hashKey)
 	if t == nil {
 		return false
@@ -159,9 +162,6 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 		if h == wl {
 			return true
 		}
-	}
-	if t.Disabled {
-		return false
 	}
 	if t.Threshold == 0 {
 		return false
