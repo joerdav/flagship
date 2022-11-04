@@ -14,10 +14,13 @@ import (
 	"github.com/joerdav/flagship"
 )
 
-func setThrottle(d *dynamodb.Client, key string, value float64, whitelist []string, table, record string) error {
+func setThrottle(d *dynamodb.Client, key string, value float64, whitelist []string, table, record string, forceRejectAll *bool) error {
 	k := &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
 		"probability": &types.AttributeValueMemberN{Value: fmt.Sprint(value)},
 	}}
+	if forceRejectAll != nil {
+		k.Value["forceRejectAll"] = &types.AttributeValueMemberBOOL{Value: *forceRejectAll}
+	}
 	if len(whitelist) > 0 {
 		k.Value["whitelist"] = &types.AttributeValueMemberNS{Value: whitelist}
 	}
@@ -127,6 +130,7 @@ func TestAllowThrottle(t *testing.T) {
 		name           string
 		throttleKey    string
 		probability    float64
+		forceRejectAll bool
 		whitelist      []uint
 		hashValue      string
 		givenKey       string
@@ -152,6 +156,24 @@ func TestAllowThrottle(t *testing.T) {
 			name:           "given throttle probability is 100 always allow",
 			throttleKey:    "someFeature",
 			probability:    100,
+			givenKey:       "someFeature",
+			hashValue:      "an input",
+			expectedResult: true,
+		},
+		{
+			name:           "given throttle probability is 100 and forceRejectAll is true always disallow",
+			throttleKey:    "someFeature",
+			probability:    100,
+			forceRejectAll: true,
+			givenKey:       "someFeature",
+			hashValue:      "an input",
+			expectedResult: false,
+		},
+		{
+			name:           "setting forceRejectAll to false will not affect the throttle",
+			throttleKey:    "someFeature",
+			probability:    100,
+			forceRejectAll: false,
 			givenKey:       "someFeature",
 			hashValue:      "an input",
 			expectedResult: true,
@@ -183,7 +205,7 @@ func TestAllowThrottle(t *testing.T) {
 			for _, f := range tt.whitelist {
 				wl = append(wl, fmt.Sprint(f))
 			}
-			err := setThrottle(testClient, tt.throttleKey, tt.probability, wl, tableName, record)
+			err := setThrottle(testClient, tt.throttleKey, tt.probability, wl, tableName, record, &tt.forceRejectAll)
 			if err != nil {
 				t.Errorf("unexpected error got %v", err)
 			}

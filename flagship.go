@@ -63,6 +63,8 @@ type ThrottleFeatureStore interface {
 	//             // probability is the likelihood that a hash is bucketed as a percentage.
 	//             // value is truncated to 2dp
 	//             "probability": 2.5
+	//             // forceRejectAll is an optional flag to force the rejection of all the traffic
+	//             "forceRejectAll": 2.5
 	//         }
 	//     }
 	// }
@@ -151,10 +153,13 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 		return false
 	}
 	t := ts[key]
-	h := s.GetHash(ctx, key, hashKey)
 	if t == nil {
 		return false
 	}
+	if t.ForceRejectAll {
+		return false
+	}
+	h := s.GetHash(ctx, key, hashKey)
 	for _, wl := range t.Whitelist {
 		if h == wl {
 			return true
