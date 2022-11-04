@@ -64,7 +64,7 @@ type ThrottleFeatureStore interface {
 	//             // value is truncated to 2dp
 	//             "probability": 2.5
 	//             // forceRejectAll is an optional flag to force the rejection of all the traffic
-	//             "forceRejectAll": 2.5
+	//             "forceRejectAll": true
 	//         }
 	//     }
 	// }
