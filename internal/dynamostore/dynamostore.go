@@ -3,7 +3,6 @@ package dynamostore
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -45,7 +44,10 @@ func (s *DynamoStore) RemoveFeature(ctx context.Context, feature string) error {
 			"_pk": &types.AttributeValueMemberS{Value: s.Record},
 		},
 		TableName:        &s.TableName,
-		UpdateExpression: aws.String(fmt.Sprintf("REMOVE features.%s", feature)),
+		UpdateExpression: aws.String("REMOVE features.#f"),
+		ExpressionAttributeNames: map[string]string{
+			"#f": feature,
+		},
 	})
 	return err
 }
@@ -55,9 +57,12 @@ func (s *DynamoStore) SetFeature(ctx context.Context, feature string, value bool
 			"_pk": &types.AttributeValueMemberS{Value: s.Record},
 		},
 		TableName:        &s.TableName,
-		UpdateExpression: aws.String(fmt.Sprintf("SET features.%s = :c", feature)),
+		UpdateExpression: aws.String("SET features.#f = :c"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":c": &types.AttributeValueMemberBOOL{Value: value},
+		},
+		ExpressionAttributeNames: map[string]string{
+			"#f": feature,
 		},
 	})
 	return err
