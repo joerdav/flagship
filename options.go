@@ -1,6 +1,7 @@
 package flagship
 
 import (
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -66,5 +67,15 @@ func WithTTL(ttl time.Duration) Option {
 func WithClient(client *dynamodb.Client) Option {
 	return func(fsc *featureStoreConfig) {
 		fsc.Client = client
+	}
+}
+
+// WithLogger allows the logging of flagship internals
+// The default value is nil
+//
+//	s, err := flagship.New(context.Background(), flagship.WithLogger(logger))
+func WithLogger(logger *log.Logger) Option {
+	return func(fsc *featureStoreConfig) {
+		fsc.Logger = logger
 	}
 }

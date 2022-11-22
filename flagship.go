@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -90,6 +91,7 @@ type featureStoreConfig struct {
 	CacheTTL                      time.Duration
 	Client                        *dynamodb.Client
 	Now                           func() time.Time
+	Logger                        *log.Logger
 }
 
 // New constructs a new instance of the feature store client.
@@ -122,6 +124,7 @@ func New(ctx context.Context, opts ...Option) (FeatureStore, error) {
 		cacheTTL: cfg.CacheTTL,
 		now:      cfg.Now,
 		store:    &ds,
+		logger:   cfg.Logger,
 	}
 	// Initial fetch to check it is working
 	_, _, err := s.fetch(ctx)
@@ -145,9 +148,10 @@ type featureStore struct {
 	cachedFeatures  models.Features
 	cachedThrottles map[string]*throttleConfigInt
 	store           store
+	logger          *log.Logger
 }
 
-func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io.Reader) bool {
+func (s *featureStore) throttleAllow(ctx context.Context, key string, hashKey io.Reader) (res bool) {
 	_, ts, err := s.fetch(ctx)
 	if err != nil {
 		return false
@@ -174,6 +178,15 @@ func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io
 	return h <= t.Threshold
 
 }
+
+func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io.Reader) (res bool) {
+	res = s.throttleAllow(ctx, key, hashKey)
+	if s.logger != nil {
+		s.logger.Printf("flagship.ThrottleAllow('%s') --> '%t'", key, res)
+	}
+	return
+}
+
 func GetHash(ctx context.Context, key string, hashKey io.Reader) uint {
 	f := fnv.New32a()
 	f.Write([]byte(key))
@@ -184,12 +197,16 @@ func (s *featureStore) GetHash(ctx context.Context, key string, hashKey io.Reade
 	return GetHash(ctx, key, hashKey)
 }
 
-func (s *featureStore) Bool(ctx context.Context, key string) bool {
+func (s *featureStore) Bool(ctx context.Context, key string) (res bool) {
 	f, _, err := s.fetch(ctx)
 	if err != nil {
 		f = s.cachedFeatures
 	}
-	return f.Bool(key)
+	res = f.Bool(key)
+	if s.logger != nil {
+		s.logger.Printf("flagship.Bool('%s') --> '%t'", key, res)
+	}
+	return
 }
 
 func (s *featureStore) AllBools(ctx context.Context) (allBools map[string]bool) {
