@@ -151,7 +151,7 @@ type featureStore struct {
 	logger          *log.Logger
 }
 
-func (s *featureStore) throttleAllow(ctx context.Context, key string, hashKey io.Reader) (res bool) {
+func (s *featureStore) throttleAllow(ctx context.Context, key string, hashKey io.Reader) bool {
 	_, ts, err := s.fetch(ctx)
 	if err != nil {
 		return false
@@ -179,12 +179,12 @@ func (s *featureStore) throttleAllow(ctx context.Context, key string, hashKey io
 
 }
 
-func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io.Reader) (res bool) {
-	res = s.throttleAllow(ctx, key, hashKey)
+func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io.Reader) bool {
+	res := s.throttleAllow(ctx, key, hashKey)
 	if s.logger != nil {
 		s.logger.Printf("flagship.ThrottleAllow('%s') --> '%t'", key, res)
 	}
-	return
+	return res
 }
 
 func GetHash(ctx context.Context, key string, hashKey io.Reader) uint {
@@ -197,16 +197,16 @@ func (s *featureStore) GetHash(ctx context.Context, key string, hashKey io.Reade
 	return GetHash(ctx, key, hashKey)
 }
 
-func (s *featureStore) Bool(ctx context.Context, key string) (res bool) {
+func (s *featureStore) Bool(ctx context.Context, key string) bool {
 	f, _, err := s.fetch(ctx)
 	if err != nil {
 		f = s.cachedFeatures
 	}
-	res = f.Bool(key)
+	res := f.Bool(key)
 	if s.logger != nil {
 		s.logger.Printf("flagship.Bool('%s') --> '%t'", key, res)
 	}
-	return
+	return res
 }
 
 func (s *featureStore) AllBools(ctx context.Context) (allBools map[string]bool) {
