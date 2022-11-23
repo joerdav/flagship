@@ -182,7 +182,7 @@ func (s *featureStore) throttleAllow(ctx context.Context, key string, hashKey io
 func (s *featureStore) ThrottleAllow(ctx context.Context, key string, hashKey io.Reader) bool {
 	res := s.throttleAllow(ctx, key, hashKey)
 	if s.logger != nil {
-		s.logger.Printf("flagship.ThrottleAllow('%s') --> '%t'", key, res)
+		s.logger.Printf("flagship.ThrottleAllow('%s') == '%t'", key, res)
 	}
 	return res
 }
@@ -204,7 +204,7 @@ func (s *featureStore) Bool(ctx context.Context, key string) bool {
 	}
 	res := f.Bool(key)
 	if s.logger != nil {
-		s.logger.Printf("flagship.Bool('%s') --> '%t'", key, res)
+		s.logger.Printf("flagship.Bool('%s') == '%t'", key, res)
 	}
 	return res
 }
