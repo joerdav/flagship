@@ -3,6 +3,7 @@ package flagship_test
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -215,6 +216,7 @@ func TestAllowThrottle(t *testing.T) {
 				flagship.WithTableName(tableName),
 				flagship.WithRecordName(record),
 				flagship.WithRegion(testRegion),
+				flagship.WithLogger(log.Default()),
 			)
 			if err != nil {
 				t.Errorf("unexpected error got %v", err)
@@ -286,6 +288,7 @@ func TestBool(t *testing.T) {
 				flagship.WithTableName(tableName),
 				flagship.WithRecordName(record),
 				flagship.WithRegion(testRegion),
+				flagship.WithLogger(log.Default()),
 			)
 			if err != nil {
 				t.Errorf("unexpected error got %v", err)
